@@ -1,1 +1,9 @@
-Hello World!
+A working set of files for the WreXplorerONE ROV project.
+Designed, programmed, and built by Brian Thomas Cook
+
+ROVparts.xlsm 						A list of parts to be purchased
+									for further development
+
+Working_Server_WreXplorer_One.ino	--Program for arduino uno
+									control board with ethernet shield
+
