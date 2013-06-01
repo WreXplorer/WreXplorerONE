@@ -47,11 +47,18 @@ print "Monitor Resolution: " + str(monitorInfo)
 # load logo
 if myOS == "win32":
   logo = pygame.image.load(os.path.join(os.path.dirname(__file__), 'logo.png'))
+  compass = pygame.image.load(os.path.join(os.path.dirname(__file__), 'compass.png'))
+  needle = pygame.image.load(os.path.join(os.path.dirname(__file__), 'needle.png'))
 else:
   logo = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/logo.png")
+  compass = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/compass.png")
+  needle = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/needle.png")
 icon = pygame.transform.scale(logo, (32,32))
 logo = pygame.transform.scale(logo, (200,200))
+compass = pygame.transform.scale(compass, (225, 225))
+needle = pygame.transform.scale(needle, (200, 200))
 logoPos = logo.get_rect()
+compassPos = compass.get_rect()
 
 # define Live Image display function
 def displayImage():
@@ -72,6 +79,17 @@ def displayLogo(xOffset, yOffset):
   logoPos.centery = background.get_rect().top + yOffset
   background.blit(logo, logoPos)
 
+# define compass display function
+def displayCompass(heading):
+  compassPos.left = background.get_rect().left 
+  compassPos.bottom = background.get_rect().bottom
+  needleRot = pygame.transform.rotate(needle, (360.0-heading))
+  needlePos = needleRot.get_rect()
+  needlePos.centerx = compassPos.centerx 
+  needlePos.centery = compassPos.centery
+  background.blit(compass, compassPos)
+  background.blit(needleRot, needlePos)
+
 # define data retrieval thread function
 def updateInfo():
   while True:
@@ -82,7 +100,7 @@ def updateInfo():
         print(gatheredData)
         param, gatheredData = gatheredData.split("$",1)
         gatheredData, param = gatheredData.split("@",1)
-        dta1, rcvd, dta2, ltsSts, volts, lock = gatheredData.split(",")
+        dta1, rcvd, dta2, ltsSts, volts, lock, heading = gatheredData.split(",")
         volts = round(((((float(volts))/100)/4.361)*14),2)
       else:
         print('Not enough data received' + gatheredData)
@@ -92,6 +110,7 @@ def updateInfo():
         ltsSts = "?"
         volts = "?"
         lock = "?"
+        heading = 270.0
     except socket.timeout:
       print('Socket Timeout')
       dta1 = "?"
@@ -100,6 +119,7 @@ def updateInfo():
       ltsSts = "?"
       volts = "?"
       lock = "?"
+      heading = 270.0
     
     # Clear display
     background.fill((200, 200, 200))
@@ -134,8 +154,11 @@ def updateInfo():
     # Display logo
     displayLogo(350,500)
     
+    # Display compass
+    displayCompass(heading)
+    
     # Display image from live cam
-    displayImage()
+    #displayImage()
 
     # blit everything to the screen
     screen.blit(background, (0, 0))
@@ -215,9 +238,9 @@ except pygame.error:
   # blit everything to the screen
   screen.blit(background, (0, 0))
   pygame.display.flip()
-  sleep(4)
-  pygame.quit()
-  sys.exit("Exit: No Joystick")
+  sleep(1)
+  #pygame.quit()
+  #sys.exit("Exit: No Joystick")
   
 # Clear display
 background.fill((200, 200, 200))
@@ -231,7 +254,7 @@ displayLogo(0,200)
 # blit everything to the screen
 screen.blit(background, (0, 0))
 pygame.display.flip()
-sleep(2)
+sleep(1)
 
 # create sockets
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -250,9 +273,9 @@ except socket.timeout:
   # blit everything to the screen
   screen.blit(background, (0, 0))
   pygame.display.flip()
-  sleep(4)
-  pygame.quit()
-  sys.exit("Exit: Failed connection")
+  sleep(1)
+  #pygame.quit()
+  #sys.exit("Exit: Failed connection")
   
 # Clear display
 background.fill((200, 200, 200))
@@ -266,7 +289,7 @@ displayLogo(0,200)
 # blit everything to the screen
 screen.blit(background, (0, 0))
 pygame.display.flip()
-sleep(2)
+sleep(1)
 
 # set messages
 msg = 's'
@@ -289,11 +312,12 @@ while True:
         sys.exit("Exit: Window Closed")
       if(check1 == 's'):
         send = True
+      x1 , y1, triggers, y2, x2 = 0, 0, 0, 0, 0
       # get joystick values with OS specific setup
-      if myOS == "win32":
-        x1 , y1, triggers, y2, x2 = myJoystick.get_axis(0)*100, myJoystick.get_axis(1)*100, myJoystick.get_axis(2)*100, myJoystick.get_axis(3)*100, myJoystick.get_axis(4)*100
-      else:
-        x1 , y1, x2, y2, triggers = myJoystick.get_axis(0)*100, myJoystick.get_axis(1)*100, myJoystick.get_axis(2)*100, myJoystick.get_axis(3)*100, myJoystick.get_axis(4)*100
+      #if myOS == "win32":
+        #x1 , y1, triggers, y2, x2 = myJoystick.get_axis(0)*100, myJoystick.get_axis(1)*100, myJoystick.get_axis(2)*100, myJoystick.get_axis(3)*100, myJoystick.get_axis(4)*100
+      #else:
+        #x1 , y1, x2, y2, triggers = myJoystick.get_axis(0)*100, myJoystick.get_axis(1)*100, myJoystick.get_axis(2)*100, myJoystick.get_axis(3)*100, myJoystick.get_axis(4)*100
       # x1, y1, triggers, y2, x2 = windows
       # x1, y1, triggers, x2, y2 = linux
       if(y2>60):
@@ -309,19 +333,19 @@ while True:
       elif(x1<-60):
         msg = 'q' # counter-clockwise
       else:
-        if(myJoystick.get_hat(0) == (0,1)):
-          msg = 'z'# ascend
-        elif(myJoystick.get_hat(0) == (0,-1)):
-          msg = 'c' # descend
-        elif(myJoystick.get_button(0) == True):
-          msg = 'l' # lights on
-        elif(myJoystick.get_button(1) == True):
-          msg = 'k' # lights off
-        elif(myJoystick.get_button(2) == True):
-          msg = 'b' # toggle depth lock
-        else:
+        #if(myJoystick.get_hat(0) == (0,1)):
+          #msg = 'z'# ascend
+        #elif(myJoystick.get_hat(0) == (0,-1)):
+          #msg = 'c' # descend
+        #elif(myJoystick.get_button(0) == True):
+          #msg = 'l' # lights on
+        #elif(myJoystick.get_button(1) == True):
+          #msg = 'k' # lights off
+        #elif(myJoystick.get_button(2) == True):
+          #msg = 'b' # toggle depth lock
+        #else:
           msg = 's' # null message
-          send = True
+          #send = True
   else:
 	# get joystick values for each event call
     for e in pygame.event.get():

@@ -278,7 +278,9 @@ void loop() {
     server.write(',');
     server.write(voltsChar);
     server.write(',');
-    server.write(lock);      
+    server.write(lock);
+    server.write(',');
+    server.write(heading);
     server.write('@');
   }
 }
