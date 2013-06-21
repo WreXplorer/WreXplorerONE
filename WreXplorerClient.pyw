@@ -24,6 +24,11 @@ os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
 # initialize pygame module
 pygame.init()
 
+# Establish fonts
+font = pygame.font.Font(None, 36)
+font2 = pygame.font.Font(None, 64)
+font3 = pygame.font.Font(None, 100)
+
 # set up joystick
 joy = pygame.joystick
 myJoystickID = joy.get_count() - 1
@@ -41,36 +46,35 @@ triggers = 0
 monitorInfo = (pygame.display.Info().current_w, pygame.display.Info().current_h)
 print "Monitor Resolution: " + str(monitorInfo)
 
-
-# set up common functions -----------------------------------------------------------------------------------------------
-
 # load logo
 if myOS == "win32":
   logo = pygame.image.load(os.path.join(os.path.dirname(__file__), 'logo.png'))
   compass = pygame.image.load(os.path.join(os.path.dirname(__file__), 'compass.png'))
-  needle = pygame.image.load(os.path.join(os.path.dirname(__file__), 'needle.png'))
+  HUD = pygame.image.load(os.path.join(os.path.dirname(__file__), 'HUD.png'))
 else:
   logo = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/logo.png")
   compass = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/compass.png")
-  needle = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/needle.png")
+  HUD = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/HUD.png")
 icon = pygame.transform.scale(logo, (32,32))
 logo = pygame.transform.scale(logo, (200,200))
-compass = pygame.transform.scale(compass, (225, 225))
-needle = pygame.transform.scale(needle, (200, 200))
+HUD = pygame.transform.scale(HUD, (1350,900))
 logoPos = logo.get_rect()
 compassPos = compass.get_rect()
+
+# ----------------------------- set up common functions ------------------------------------------------------------------
 
 # define Live Image display function
 def displayImage():
   if myOS == "win32":
-    urllib.urlretrieve("http://192.168.1.113/image.jpg", os.path.join(os.path.dirname(__file__), 'image.jpg')) #"http://192.168.1.113/image.jpg"
+    #urllib.urlretrieve("http://192.168.1.113/image.jpg", os.path.join(os.path.dirname(__file__), 'image.jpg')) #"http://192.168.1.113/image.jpg"
     image = pygame.image.load(os.path.join(os.path.dirname(__file__), 'image.jpg'))
   else:
-    urllib.urlretrieve("http://192.168.1.113/image.jpg", "/home/pi/Desktop/wreXplorerChanged/image.jpg") #"http://192.168.1.113/image.jpg"
+    #urllib.urlretrieve("http://192.168.1.113/image.jpg", "/home/pi/Desktop/wreXplorerChanged/image.jpg") #"http://192.168.1.113/image.jpg"
     image = pygame.image.load("/home/pi/Desktop/wreXplorerChanged/image.jpg")
+  image = pygame.transform.scale(image, (1350,900))
   imagePos = image.get_rect()
   imagePos.centerx = background.get_rect().centerx
-  imagePos.centery = background.get_rect().centery + 100
+  imagePos.centery = background.get_rect().centery
   background.blit(image, imagePos)
 
 # define logo display function
@@ -81,48 +85,65 @@ def displayLogo(xOffset, yOffset):
 
 # define compass display function
 def displayCompass(heading):
-  compassPos.left = background.get_rect().left 
-  compassPos.bottom = background.get_rect().bottom
-  needleRot = pygame.transform.rotate(needle, (360.0-heading))
-  needlePos = needleRot.get_rect()
-  needlePos.centerx = compassPos.centerx 
-  needlePos.centery = compassPos.centery
-  background.blit(compass, compassPos)
-  background.blit(needleRot, needlePos)
+  compassPos.left = background.get_rect().left +486
+  compassPos.bottom = background.get_rect().top +180
+  background.blit(compass, compassPos, (heading+45,0,355,75))
 
 # define data retrieval thread function
 def updateInfo():
+  heading = 0.0
+  volts = 11.0
+  testing = True
   while True:
     #Get all new data
-    try:
-      gatheredData = s.recv(1024)
-      if "$" in gatheredData and "@" in gatheredData:
-        print(gatheredData)
-        param, gatheredData = gatheredData.split("$",1)
-        gatheredData, param = gatheredData.split("@",1)
-        dta1, rcvd, dta2, ltsSts, volts, lock, heading = gatheredData.split(",")
-        volts = round(((((float(volts))/100)/4.361)*14),2)
-      else:
-        print('Not enough data received' + gatheredData)
+    if testing<>True:
+      try:
+        gatheredData = s.recv(1024)
+        if "$" in gatheredData and "@" in gatheredData:
+          print(gatheredData)
+          param, gatheredData = gatheredData.split("$",1)
+          gatheredData, param = gatheredData.split("@",1)
+          dta1, rcvd, dta2, ltsSts, volts, lock, heading = gatheredData.split(",")
+          volts = round(((((float(volts))/100)/4.361)*14),2)
+        else:
+          print('Not enough data received' + gatheredData)
+          dta1 = "?"
+          rcvd = "?"
+          dta2 = "?"
+          ltsSts = "?"
+          volts = "?"
+          lock = "?"
+          heading = 0.00
+      except socket.timeout:
+        print('Socket Timeout')
         dta1 = "?"
         rcvd = "?"
         dta2 = "?"
         ltsSts = "?"
         volts = "?"
         lock = "?"
-        heading = 270.0
-    except socket.timeout:
-      print('Socket Timeout')
-      dta1 = "?"
-      rcvd = "?"
-      dta2 = "?"
-      ltsSts = "?"
-      volts = "?"
-      lock = "?"
-      heading = 270.0
+        heading = 0.00
+    else:
+      dta1 = "0"
+      rcvd = "0"
+      dta2 = "0"
+      ltsSts = "-"
+      if volts>14.00:
+        volts = 11.00
+      volts = volts + 0.06
+      lock = "-"
+      if heading>360.00:
+        heading = 0.00
+      heading = heading + 5.01
     
     # Clear display
-    background.fill((200, 200, 200))
+    background.fill((0, 0, 0))
+    
+    # Display image from live cam
+    displayImage()
+    
+    # Display HUD
+    background.blit(HUD,(0,0))
   
     # refresh Light Status text
     if ltsSts == "+":
@@ -131,13 +152,13 @@ def updateInfo():
       ltsSts = "OFF"
     else:
       ltsSts = "?"
-    displayText(('Light Status: ' + str(ltsSts)), 0, 40)
+    displayText((str(ltsSts)), -610, 870,font2)
   
     # refresh Current Depth text
-    displayText(('Current Depth: ' + str(dta1)+'ft'), 0, 80)
+    displayText((str(dta1)+'ft'), -250, 870, font2)
     
     # refresh Set Depth text
-    displayText(('Set Depth: ' + str(dta2)+'ft'), 0, 120)
+    displayText((str(dta2)+'ft'), 425, 870,font2)
   
     # refresh depth lock text
     if lock == "+":
@@ -146,19 +167,16 @@ def updateInfo():
       lock = "OFF"
     else:
       lock = "?"
-    displayText(('Depth Lock: ' + str(lock)), 0, 160)
+    displayText((str(lock)), 120, 870, font2)
   
     # refresh Voltage text
-    displayText(('Voltage: ' + str(volts)), 0, 200)
+    displayText((str(volts)), -495, 720, font3)
     
-    # Display logo
-    displayLogo(350,500)
+    # Testing text
+    displayText((str(heading)), 250, 140, font2, (0,0,0))
     
     # Display compass
     displayCompass(heading)
-    
-    # Display image from live cam
-    #displayImage()
 
     # blit everything to the screen
     screen.blit(background, (0, 0))
@@ -168,8 +186,8 @@ def updateInfo():
     time.sleep(0.1)
 
 # define text updating function
-def displayText(newText, xOffset, yOffset):
-  text = font.render(newText, 1, (10, 10, 10))
+def displayText(newText, xOffset, yOffset, size=font, color=(255,0,0)):
+  text = size.render(newText, 1, color)
   textpos = text.get_rect()
   textpos.centerx = background.get_rect().centerx + xOffset
   textpos.centery = background.get_rect().top + yOffset
@@ -179,19 +197,18 @@ def displayText(newText, xOffset, yOffset):
 
 
 # create window to display values
-(width, height) = (900, 600)
+(width, height) = (1350, 900)
 pygame.display.set_icon(icon)
-screen = pygame.display.set_mode((width, height))
+screen = pygame.display.set_mode((width, height)) #,pygame.NOFRAME
 pygame.display.set_caption('WreXplorer ONE Control Module')
 pygame.display.flip()
 
 # background
 background = pygame.Surface(screen.get_size())
 background = background.convert()
-background.fill((200, 200, 200))
+background.fill((0, 0, 0))
 
 # add text
-font = pygame.font.Font(None, 36)
 text = font.render("Loading...", 1, (10, 10, 10))
 textpos = text.get_rect()
 textpos.centerx = background.get_rect().centerx
@@ -204,7 +221,7 @@ displayLogo(0,200)
 screen.blit(background, (0, 0))
 pygame.display.flip()
 
-sleep(3)
+#sleep(3)
 
 # set the socket parameters
 socket.setdefaulttimeout(1)
@@ -227,7 +244,7 @@ try:
   print "Number of POV hats: " + repr(myJoystickHatNum)
 except pygame.error:
   # Clear display
-  background.fill((200, 200, 200))
+  background.fill((0, 0, 0))
   
   # refresh text
   displayText('ERROR: JOYSTICK NOT FOUND', 0, 320)
@@ -238,12 +255,12 @@ except pygame.error:
   # blit everything to the screen
   screen.blit(background, (0, 0))
   pygame.display.flip()
-  sleep(1)
+  #sleep(1)
   #pygame.quit()
   #sys.exit("Exit: No Joystick")
   
 # Clear display
-background.fill((200, 200, 200))
+background.fill((0, 0, 0))
 
 # refresh text
 displayText('Connecting to WreXplorer ONE...', 0, 320)
@@ -254,7 +271,7 @@ displayLogo(0,200)
 # blit everything to the screen
 screen.blit(background, (0, 0))
 pygame.display.flip()
-sleep(1)
+#sleep(1)
 
 # create sockets
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -262,7 +279,7 @@ try:
   s.connect(addr)
 except socket.timeout:
   # Clear display
-  background.fill((200, 200, 200))
+  background.fill((0, 0, 0))
   
   # refresh text
   displayText('ERROR: COULD NOT CONNECT', 0, 320)
@@ -273,12 +290,12 @@ except socket.timeout:
   # blit everything to the screen
   screen.blit(background, (0, 0))
   pygame.display.flip()
-  sleep(1)
+  #sleep(1)
   #pygame.quit()
   #sys.exit("Exit: Failed connection")
   
 # Clear display
-background.fill((200, 200, 200))
+background.fill((0, 0, 0))
 
 # refresh text
 displayText('Connected', 0, 320)
@@ -289,7 +306,7 @@ displayLogo(0,200)
 # blit everything to the screen
 screen.blit(background, (0, 0))
 pygame.display.flip()
-sleep(1)
+#sleep(1)
 
 # set messages
 msg = 's'
@@ -345,7 +362,7 @@ while True:
           #msg = 'b' # toggle depth lock
         #else:
           msg = 's' # null message
-          #send = True
+          send = True
   else:
 	# get joystick values for each event call
     for e in pygame.event.get():
